@@ -1,0 +1,307 @@
+<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>http://abnerpei.github.io</id>
+    <title>艾波儿的技术博客</title>
+    <subtitle>一日为码农，终身撸不停。</subtitle>
+    <icon>http://abnerpei.github.io/images/favicon.ico</icon>
+    <link href="http://abnerpei.github.io" />
+    <author>
+      <name>艾波儿</name>
+    </author>
+    <updated>2021-01-17T05:04:10.000Z</updated>
+    <entry>
+        <id>http://abnerpei.github.io/ios/ios_underlying_inquiry/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%A9%B6%E4%B9%8BBlock/</id>
+        <title>iOS底层探究之block</title>
+        <link rel="alternate" href="http://abnerpei.github.io/ios/ios_underlying_inquiry/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%A9%B6%E4%B9%8BBlock/"/>
+        <content type="html">&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt; &lt;code&gt;block&lt;/code&gt; &lt;/strong&gt; 的原理是怎样的？本质是什么？&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt; &lt;code&gt;__block&lt;/code&gt; &lt;/strong&gt; 的作用是什么？有什么使用注意点？&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;block&lt;/code&gt;  的属性修饰符为什么是 &lt;code&gt;copy&lt;/code&gt; ？使用 &lt;code&gt;block&lt;/code&gt;  有哪些注意点？&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;block&lt;/code&gt;  在修饰 &lt;code&gt;NAMutableArray&lt;/code&gt; , 需不需要添加 &lt;strong&gt; &lt;code&gt;__block&lt;/code&gt; &lt;/strong&gt; ?&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;话不多说，直接来看代码，&lt;strong&gt;问：打印结果是什么？&lt;/strong&gt;&lt;/p&gt;
+&lt;figure class=&#34;highlight java&#34;&gt;&lt;figcaption data-lang=&#34;java&#34;&gt;&lt;span&gt;以下代码是Objective-C，并不是java&lt;/span&gt;&lt;/figcaption&gt;&lt;table&gt;&lt;tr&gt;&lt;td data-num=&#34;1&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token comment&#34;&gt;/// 第①题：局部变量的捕获&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;2&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token keyword&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;token function&#34;&gt;test_localVariable&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;3&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token keyword&#34;&gt;int&lt;/span&gt; a &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;10&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;4&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token keyword&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token operator&#34;&gt;^&lt;/span&gt;block&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token keyword&#34;&gt;void&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;^&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;5&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        &lt;span class=&#34;token function&#34;&gt;printf&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token string&#34;&gt;&#34;局部变量-a的捕获 %d&#34;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;,&lt;/span&gt;a&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;6&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;7&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    a &lt;span class=&#34;token operator&#34;&gt;+=&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;1&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;8&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token function&#34;&gt;block&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;9&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;&lt;figure class=&#34;highlight java&#34;&gt;&lt;figcaption data-lang=&#34;java&#34;&gt;&lt;span&gt;以下代码是Objective-C，并不是java&lt;/span&gt;&lt;/figcaption&gt;&lt;table&gt;&lt;tr&gt;&lt;td data-num=&#34;1&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token comment&#34;&gt;/// 第②题：静态局部变量的捕获&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;2&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token keyword&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;token function&#34;&gt;test_staticLocalVariable&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;3&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token keyword&#34;&gt;static&lt;/span&gt; &lt;span class=&#34;token keyword&#34;&gt;int&lt;/span&gt; b &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;20&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;4&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token keyword&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token operator&#34;&gt;^&lt;/span&gt;block&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token keyword&#34;&gt;void&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;^&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;5&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        &lt;span class=&#34;token function&#34;&gt;printf&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token string&#34;&gt;&#34;静态局部变量-b的捕获 %d&#34;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;,&lt;/span&gt;b&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;6&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;7&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    b &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;40&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;8&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token function&#34;&gt;block&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;9&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;&lt;p&gt;别急，&lt;strong&gt;一定要自己想想，有了结果再往下继续！&lt;/strong&gt;&lt;/p&gt;
+&lt;ol&gt;
+&lt;li class=&#34;quiz&#34;&gt;
+&lt;p&gt;第①题的运行结果是 &lt;span class=&#34;gap&#34;&gt;&lt;/span&gt; 。&lt;/p&gt;
+&lt;ul class=&#34;options&#34;&gt;
+&lt;li class=&#34;correct&#34;&gt;局部变量 - a 的捕获 10&lt;/li&gt;
+&lt;li&gt;局部变量 - a 的捕获 11&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li class=&#34;quiz&#34;&gt;
+&lt;p&gt;第②题的运行结果是 &lt;span class=&#34;gap&#34;&gt;&lt;/span&gt; 。&lt;/p&gt;
+&lt;ul class=&#34;options&#34;&gt;
+&lt;li&gt;静态局部变量 - b 的捕获 20&lt;/li&gt;
+&lt;li class=&#34;correct&#34;&gt;静态局部变量 - b 的捕获 40&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;来到了这一步，你肯定已经有了自己的答案。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;如果，你的答案正确✅，恭喜您。&lt;br /&gt;
+如果，你的答案错误❌，木关系啦，我们继续。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;首先，我们先把 &lt;code&gt;OC&lt;/code&gt;  转成 &lt;code&gt;C++&lt;/code&gt; ，看看底层是怎么实现的：&lt;/p&gt;
+&lt;figure class=&#34;highlight shell&#34;&gt;&lt;figcaption data-lang=&#34;Bash&#34;&gt;&lt;/figcaption&gt;&lt;table&gt;&lt;tr&gt;&lt;td data-num=&#34;1&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;///这里要指到main.m的上一级目录，再在终端执行下面命令&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;2&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;xcrun -sdk iphoneos clang -arch arm64 -rewrite-objc main.m -o LocalVarBlock.cpp&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/iOS/ios_underlying_inquiry/Block/001.png&#34; alt=&#34;&#34; title=&#34;局部变量a的捕获&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/iOS/ios_underlying_inquiry/Block/002.png&#34; alt=&#34;&#34; title=&#34;静态局部变量b的捕获&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;通过上面的两张截图中的标记处，可以很明显的看出&lt;strong&gt;局部变量 a&lt;/strong&gt; 和&lt;strong&gt;静态局部变量 b&lt;/strong&gt;，被 block&lt;strong&gt; 捕获的方式完全不同&lt;/strong&gt;，前者是&lt;strong&gt;值捕获&lt;/strong&gt;，或者是&lt;strong&gt;指针捕获&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;如果看到这里，你觉得就结束了吗？&lt;/p&gt;
+&lt;p&gt;认为结束的小伙伴，请问：&lt;strong&gt;为什么 a 是值捕获而 b 是指针捕获？&lt;/strong&gt;&lt;br /&gt;
+而认为没有结束的小伙伴，咱们继续！&lt;/p&gt;
+&lt;p&gt;兄弟们，上代码，&lt;strong&gt;问：打印结果是什么？&lt;/strong&gt;&lt;/p&gt;
+&lt;figure class=&#34;highlight java&#34;&gt;&lt;figcaption data-lang=&#34;java&#34;&gt;&lt;span&gt;以下代码是Objective-C，并不是java&lt;/span&gt;&lt;/figcaption&gt;&lt;table&gt;&lt;tr&gt;&lt;td data-num=&#34;1&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token comment&#34;&gt;/// 局部变量和静态局部变量的作用域和生存期&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;2&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token keyword&#34;&gt;void&lt;/span&gt; &lt;span class=&#34;token function&#34;&gt;testLocalVarAndStaticLocalVar&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;3&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token comment&#34;&gt;/// 定义局部变量 a&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;4&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token keyword&#34;&gt;int&lt;/span&gt; a &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;10&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;5&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;6&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token comment&#34;&gt;/// 定义静态局部变量 b&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;7&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token keyword&#34;&gt;static&lt;/span&gt; &lt;span class=&#34;token keyword&#34;&gt;int&lt;/span&gt; b &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;20&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;8&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;9&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    a &lt;span class=&#34;token operator&#34;&gt;+=&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;10&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;10&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    b &lt;span class=&#34;token operator&#34;&gt;+=&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;20&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;11&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;12&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token function&#34;&gt;printf&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token string&#34;&gt;&#34;\na is %d, b is %d&#34;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;,&lt;/span&gt; a&lt;span class=&#34;token punctuation&#34;&gt;,&lt;/span&gt; b&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;13&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;14&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;15&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token keyword&#34;&gt;int&lt;/span&gt; &lt;span class=&#34;token function&#34;&gt;main&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token keyword&#34;&gt;int&lt;/span&gt; argc&lt;span class=&#34;token punctuation&#34;&gt;,&lt;/span&gt; &lt;span class=&#34;token keyword&#34;&gt;char&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;*&lt;/span&gt; argv&lt;span class=&#34;token punctuation&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;]&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;16&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token class-name&#34;&gt;NSString&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;*&lt;/span&gt; appDelegateClassName&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;17&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token annotation punctuation&#34;&gt;@autoreleasepool&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;18&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        &lt;span class=&#34;token comment&#34;&gt;// Setup code that might create autoreleased objects goes here.&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;19&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        appDelegateClassName &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token class-name&#34;&gt;NSStringFromClass&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;[&lt;/span&gt;&lt;span class=&#34;token class-name&#34;&gt;AppDelegate&lt;/span&gt; &lt;span class=&#34;token keyword&#34;&gt;class&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;]&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;20&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;21&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        &lt;span class=&#34;token keyword&#34;&gt;for&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token keyword&#34;&gt;int&lt;/span&gt; i &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;0&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt; i &lt;span class=&#34;token operator&#34;&gt;&amp;lt;&lt;/span&gt; &lt;span class=&#34;token number&#34;&gt;10&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt; i&lt;span class=&#34;token operator&#34;&gt;++&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;22&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;            &lt;span class=&#34;token function&#34;&gt;printf&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token string&#34;&gt;&#34;\n这是第%d次循环&#34;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;,&lt;/span&gt;i&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;23&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;            &lt;span class=&#34;token function&#34;&gt;testLocalVarAndStaticLocalVar&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;24&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        &lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;25&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;26&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;27&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token keyword&#34;&gt;return&lt;/span&gt; &lt;span class=&#34;token class-name&#34;&gt;UIApplicationMain&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;argc&lt;span class=&#34;token punctuation&#34;&gt;,&lt;/span&gt; argv&lt;span class=&#34;token punctuation&#34;&gt;,&lt;/span&gt; nil&lt;span class=&#34;token punctuation&#34;&gt;,&lt;/span&gt; appDelegateClassName&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;28&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;&lt;blockquote&gt;
+&lt;p&gt;再说一句：&lt;strong&gt;一定要自己先想想，或者直接敲代码跑一跑！&lt;/strong&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;再来看下问题：&lt;strong&gt;为什么 a 是值捕获而 b 是指针捕获？&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;相信通过上面的代码示例，你应该立马知道了为什么了吧？没错，就是&lt;strong&gt;变量的作用域决定了 block 的捕获方式&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;接下来，结合代码详细分析如下：&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;个人觉得这里配图更清晰&lt;/strong&gt;，所以，请看图：&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/iOS/ios_underlying_inquiry/Block/003.png&#34; alt=&#34;&#34; title=&#34;局部变量和静态局部变量的作用域和生存期&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;既然明白了：&lt;strong&gt;变量的作用域决定了 block 的捕获方式。&lt;strong&gt;上面我们已经测试了&lt;/strong&gt;局部变量&lt;/strong&gt;和&lt;strong&gt;静态局部变量&lt;/strong&gt;的捕获方式，那么&lt;strong&gt;静态全局变量&lt;/strong&gt;和&lt;strong&gt;普通全局变量&lt;/strong&gt;，block 又是怎么捕获的呢？答案是不是应该很清晰了！&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;“&lt;strong&gt;指针捕获&lt;/strong&gt;”，这也许是你的答案。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;blockquote&gt;
+&lt;p&gt;但，我可以告诉你：&lt;strong&gt;不捕获&lt;/strong&gt;！&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;为什么不捕获呢？&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;静态全局变量&lt;/strong&gt;的作用域：&lt;strong&gt;局限于一个源文件内&lt;/strong&gt;，别的源文件你也访问不了呀。&lt;br /&gt;
+&lt;strong&gt;普通全局变量&lt;/strong&gt;的作用域：&lt;strong&gt;整个源程序。&lt;/strong&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;最后，我们还通过 &lt;code&gt;OC&lt;/code&gt;  转成 &lt;code&gt;C++&lt;/code&gt; ，看看底层是怎么实现的：&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/iOS/ios_underlying_inquiry/Block/004.png&#34; alt=&#34;6777777&#34; /&gt;&lt;/p&gt;
+</content>
+        <category term="iOS开发" scheme="http://abnerpei.github.io/categories/ios/" />
+        <category term="iOS底层探究" scheme="http://abnerpei.github.io/categories/ios/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%A9%B6/" />
+        <category term="iOS" scheme="http://abnerpei.github.io/tags/iOS/" />
+        <category term="iOS底层探究" scheme="http://abnerpei.github.io/tags/iOS%E5%BA%95%E5%B1%82%E6%8E%A2%E7%A9%B6/" />
+        <category term="Block" scheme="http://abnerpei.github.io/tags/Block/" />
+        <updated>2021-01-17T05:04:10.000Z</updated>
+    </entry>
+    <entry>
+        <id>http://abnerpei.github.io/cpp/Gitee+PicGo/</id>
+        <title>Gitee+PicGo</title>
+        <link rel="alternate" href="http://abnerpei.github.io/cpp/Gitee+PicGo/"/>
+        <content type="html">&lt;h2 id=&#34;1-搭建图床&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#1-搭建图床&#34;&gt;#&lt;/a&gt; 1、搭建图床&lt;/h2&gt;
+&lt;p&gt;1.1 登录你的&lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cHM6Ly9naXRlZS5jb20=&#34;&gt; Gitee&lt;/span&gt;，并新建仓库&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/001.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;1.2 填写仓库名、仓库路径、是否开源等信息&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;注意&lt;/strong&gt;：下图的 &lt;strong&gt; &lt;code&gt;4&lt;/code&gt; &lt;/strong&gt; 和 &lt;strong&gt; &lt;code&gt;5&lt;/code&gt; &lt;/strong&gt; 必须选中。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/002.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;1.3 创建私人令牌&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/003.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/004.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/005.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/006.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;1.4 复制私人令牌&lt;br /&gt;
+&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/007.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;1.5 配置 PicGo，并上传图片&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;注意点，在下图中有说明，请注意！&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/008.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/009.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+</content>
+        <category term="C++" scheme="http://abnerpei.github.io/categories/cpp/" />
+        <updated>2020-04-12T12:46:25.000Z</updated>
+    </entry>
+    <entry>
+        <id>http://abnerpei.github.io/ios/%E6%B5%85%E8%AF%BBMJRefresh%E5%90%8E%E8%87%AA%E5%AE%9A%E4%B9%89%E4%BA%86%E4%B8%AAUIScrollView%E7%9B%91%E5%90%AC%E6%BB%9A%E5%8A%A8%E7%9A%84block%E5%B1%9E%E6%80%A7/</id>
+        <title>我后续也会写一篇我自己的解读</title>
+        <link rel="alternate" href="http://abnerpei.github.io/ios/%E6%B5%85%E8%AF%BBMJRefresh%E5%90%8E%E8%87%AA%E5%AE%9A%E4%B9%89%E4%BA%86%E4%B8%AAUIScrollView%E7%9B%91%E5%90%AC%E6%BB%9A%E5%8A%A8%E7%9A%84block%E5%B1%9E%E6%80%A7/"/>
+        <content type="html">&lt;figure class=&#34;highlight java&#34;&gt;&lt;figcaption data-lang=&#34;java&#34;&gt;&lt;span&gt;行高亮&lt;/span&gt;&lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cHM6Ly9zaG9rYS5sb3N0eXUubWU=&#34;&gt;参考链接&lt;/span&gt;&lt;/figcaption&gt;&lt;table&gt;&lt;tr class=&#34;marked&#34;&gt;&lt;td data-num=&#34;1&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token keyword&#34;&gt;import&lt;/span&gt; &lt;span class=&#34;token namespace&#34;&gt;java&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;util&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;token class-name&#34;&gt;Scanner&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;2&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;3&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token class-name&#34;&gt;Scanner&lt;/span&gt; in &lt;span class=&#34;token operator&#34;&gt;=&lt;/span&gt; &lt;span class=&#34;token keyword&#34;&gt;new&lt;/span&gt; &lt;span class=&#34;token class-name&#34;&gt;Scanner&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token class-name&#34;&gt;System&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;in&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;4&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token comment&#34;&gt;// 输入 Scan 之后，按下键盘 Alt + “/” 键，Eclipse 下自动补全。&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;5&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token class-name&#34;&gt;System&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;out&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;println &lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;in&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;nextLine &lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr class=&#34;marked&#34;&gt;&lt;td data-num=&#34;6&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token class-name&#34;&gt;System&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;out&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;println &lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token string&#34;&gt;&#34;Hello&#34;&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;+&lt;/span&gt; &lt;span class=&#34;token string&#34;&gt;&#34;world.&#34;&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;&lt;figure class=&#34;highlight java&#34;&gt;&lt;figcaption data-lang=&#34;java&#34;&gt;&lt;span&gt;⚠️以下代码是Objective-C，并不是java⚠️&lt;/span&gt;&lt;/figcaption&gt;&lt;table&gt;&lt;tr&gt;&lt;td data-num=&#34;1&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token operator&#34;&gt;-&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token keyword&#34;&gt;void&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;panGestureRecognizerStateAction&lt;span class=&#34;token operator&#34;&gt;:&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;&lt;span class=&#34;token class-name&#34;&gt;NSDictionary&lt;/span&gt;&lt;span class=&#34;token generics&#34;&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&#34;token class-name&#34;&gt;NSKeyValueChangeKey&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;,&lt;/span&gt;id&lt;span class=&#34;token punctuation&#34;&gt;&gt;&lt;/span&gt;&lt;/span&gt; &lt;span class=&#34;token operator&#34;&gt;*&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt;change&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;2&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;3&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token keyword&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;self&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;panGestureRecognizer&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;state &lt;span class=&#34;token operator&#34;&gt;==&lt;/span&gt; &lt;span class=&#34;token class-name&#34;&gt;UIGestureRecognizerStateEnded&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;4&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        &lt;span class=&#34;token comment&#34;&gt;// 内容不够一个屏幕时，系统会自动回弹，这时候记得把 pp_lastContentOffsetY 重新设置一下&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;5&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        &lt;span class=&#34;token keyword&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;self&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;pp_FSB_insetT&lt;span class=&#34;token operator&#34;&gt;+&lt;/span&gt;self&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;pp_FSB_contentH &lt;span class=&#34;token operator&#34;&gt;&amp;lt;=&lt;/span&gt; self&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;pp_h&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;6&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;            &lt;span class=&#34;token punctuation&#34;&gt;[&lt;/span&gt;self setupInitializeOffsetY&lt;span class=&#34;token punctuation&#34;&gt;]&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;7&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        &lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;span class=&#34;token keyword&#34;&gt;else&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;8&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;            &lt;span class=&#34;token comment&#34;&gt;// 超过一个屏幕，这时候下拉，当松开的时候要把 pp_lastContentOffsetY 重新设置一下&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;9&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;            &lt;span class=&#34;token keyword&#34;&gt;if&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;(&lt;/span&gt;self&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;pp_FSB_offsetY &lt;span class=&#34;token operator&#34;&gt;&amp;lt;&lt;/span&gt; self&lt;span class=&#34;token punctuation&#34;&gt;.&lt;/span&gt;pp_FSB_insetT&lt;span class=&#34;token punctuation&#34;&gt;)&lt;/span&gt; &lt;span class=&#34;token punctuation&#34;&gt;&amp;#123;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;10&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;                &lt;span class=&#34;token punctuation&#34;&gt;[&lt;/span&gt;self setupInitializeOffsetY&lt;span class=&#34;token punctuation&#34;&gt;]&lt;/span&gt;&lt;span class=&#34;token punctuation&#34;&gt;;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;11&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;            &lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;12&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;        &lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;13&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;14&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;    &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td data-num=&#34;15&#34;&gt;&lt;/td&gt;&lt;td&gt;&lt;pre&gt;&lt;span class=&#34;token punctuation&#34;&gt;&amp;#125;&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/figure&gt;&lt;p&gt;&lt;img data-src=&#34;https://tva3.sinaimg.cn/large/6833939bly1gicis081o9j20zk0m8dmr.jpg&#34; alt=&#34;这里是 alt&#34; title=&#34;这里是 title&#34; /&gt;&lt;/p&gt;
+&lt;h3 id=&#34;一-前言&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#一-前言&#34;&gt;#&lt;/a&gt; 一、前言&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;最近在解答&lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cHM6Ly93d3cuamlhbnNodS5jb20vcC80ZWE0MjdiYWIwYWY=&#34;&gt; [最新版] MJRefresh 解析与详细使用指导&lt;/span&gt;和&lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cHM6Ly93d3cuamlhbnNodS5jb20vcC83ZjNiODlhMDJjMzg=&#34;&gt; MJRefresh 实现刷新（使用它的 Block 方法）&lt;/span&gt;中简友的提问，浅读了下 **&lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cHM6Ly9naXRodWIuY29tL0NvZGVyTUpMZWUvTUpSZWZyZXNo&#34;&gt;MJRefresh&lt;/span&gt;** 的源码 &lt;code&gt;(关于源码解读，网上已有很多，我后续也会写一篇我自己的解读，不过今天要说的是：借鉴别人的思路，做or完善自己的事。):利用KVO在- (void)willMoveToSuperview:(UIView *)newSuperview方法调用时监听scrollView的contentOffset/contentSize和panGestureRecognizer的state属性，然后做对应操作&lt;/code&gt; 。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3 id=&#34;二-开发困惑&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#二-开发困惑&#34;&gt;#&lt;/a&gt; 二、开发困惑&lt;/h3&gt;
+&lt;p&gt;通常，作为 iOS 开发人员，判断 &lt;code&gt;UIScrollView/UITableView/UICollectionView&lt;/code&gt;  的滚动情况的事，时有发生。如果每次都去实现 &lt;code&gt;delegate&lt;/code&gt;  方法，在我看来，有些麻烦。除了一遍一遍的写代理，还有一种就是建个基类，但是这样基类还是要实现对应的 &lt;code&gt;delegate&lt;/code&gt;  方法。&lt;/p&gt;
+&lt;h3 id=&#34;三-解决方法给uiscrollview添加block属性监听滚动&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#三-解决方法给uiscrollview添加block属性监听滚动&#34;&gt;#&lt;/a&gt; 三、解决方法：给 UIScrollView 添加 block 属性监听滚动&lt;/h3&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/46bf88baeff844a0bcd09960c6e6fd40~tplv-k3u1fbpfcp-watermark.image&#34; alt=&#34;&#34; /&gt;&lt;br /&gt;
+&lt;img data-src=&#34;/assets/MJ_001.gif&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;先预览下效果 &lt;code&gt;(上面红色的是手机录屏所致)&lt;/code&gt; ：&lt;br /&gt;
+&lt;img data-src=&#34;http://upload-images.jianshu.io/upload_images/402808-294f1f0887cb142c.gif?imageMogr2/auto-orient/strip&#34; alt=&#34;效果图&#34; /&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3 id=&#34;四-理清思路&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#四-理清思路&#34;&gt;#&lt;/a&gt; 四、理清思路&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;ol&gt;
+&lt;li&gt;新建一个类 &lt;code&gt;PPMJRefreshComponent,类似MJRefresh中的MJRefreshComponent&lt;/code&gt; ，用来当做观察者；&lt;/li&gt;
+&lt;li&gt;既然 ** &lt;code&gt;PPMJRefreshComponent&lt;/code&gt; &lt;strong&gt; 要观察&lt;/strong&gt; &lt;code&gt;UIScrollView&lt;/code&gt; &lt;strong&gt; 的 &lt;code&gt;contentOffset&lt;/code&gt;  以及 &lt;code&gt;panGestureRecognizer&lt;/code&gt;  的 &lt;code&gt;state&lt;/code&gt; , 那么&lt;/strong&gt; &lt;code&gt;PPMJRefreshComponent&lt;/code&gt; &lt;strong&gt; 就要关联当前的&lt;/strong&gt; &lt;code&gt;UIScrollView&lt;/code&gt; &lt;strong&gt;；并且，&lt;/strong&gt; &lt;code&gt;UIScrollView&lt;/code&gt; &lt;strong&gt; 要拥有一个&lt;/strong&gt; &lt;code&gt;PPMJRefreshComponent&lt;/code&gt; ** 对象（如下图：）；&lt;/li&gt;
+&lt;/ol&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;img data-src=&#34;http://upload-images.jianshu.io/upload_images/402808-a2af00279c2bc5d3.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240&#34; alt=&#34;componet和scrollView相互关系&#34; /&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;ol start=&#34;3&#34;&gt;
+&lt;li&gt;&lt;strong&gt; &lt;code&gt;PPMJRefreshComponent&lt;/code&gt; &lt;strong&gt; 观察的结果怎么传递给&lt;/strong&gt; &lt;code&gt;UIScrollView&lt;/code&gt; &lt;/strong&gt;？我采用的是 delegate &lt;code&gt;(PPMJRefreshComponentDelegate)&lt;/code&gt; , 需要 ** &lt;code&gt;UIScrollView&lt;/code&gt; &lt;strong&gt; 对象遵守；&lt;/strong&gt;（此处不适用 block 是因为 block 嵌套 block 容易出问题）**&lt;/li&gt;
+&lt;/ol&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;img data-src=&#34;http://upload-images.jianshu.io/upload_images/402808-cc230f3b76f22255.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240&#34; alt=&#34;PPMJRefreshComponentDelegate.png&#34; /&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;ol start=&#34;4&#34;&gt;
+&lt;li&gt;&lt;strong&gt; &lt;code&gt;UIScrollView&lt;/code&gt; &lt;strong&gt; 对象实现代理，并设置 scrollBlock 的时候触发监听：&lt;/strong&gt;(代码如下，注释已写进去)&lt;/strong&gt;&lt;/li&gt;
+&lt;/ol&gt;
+&lt;/blockquote&gt;
+&lt;pre&gt;&lt;code&gt;@implementation UIScrollView (ScrollBlock)
+
+#pragma mark --- PPMJRefreshComponentDelegate
+-(void)scrollViewContentOffsetDidChange:(NSDictionary&amp;lt;NSKeyValueChangeKey,id&amp;gt; *)change&amp;#123;
+     [self contentOffsetBlockAction:change];
+&amp;#125;
+-(void)scrollViewPanStateDidChange:(NSDictionary&amp;lt;NSKeyValueChangeKey,id&amp;gt; *)change&amp;#123;
+    [self panGestureRecognizerStateAction:change];
+&amp;#125;
+
+-(void)contentOffsetBlockAction:(NSDictionary&amp;lt;NSKeyValueChangeKey,id&amp;gt; *)change
+&amp;#123;
+    //这个属性字面理解意思为：正在拖动。实际上是：scrollView是否滚动了，只要不是最开始初始化的时候设置的位置，就为YES。
+    if (!self.isDragging) &amp;#123;
+        return;
+    &amp;#125;
+    //【注意】此处要特别注意，如果设置contentInset的话，要给pp_lastContentOffsetY赋值为insetT的初始值
+    if (!self.pp_lastContentOffsetY) &amp;#123;
+        [self setupInitializeOffsetY];
+    &amp;#125;
+    //获取当前的contentOffsetY
+    CGFloat currentContentOffsetY = self.pp_FSB_offsetY;
+   
+    //如果前后的contentOffsetY值相同，就不做处理
+    CGFloat lastContentOffsetY = [self.pp_lastContentOffsetY floatValue];
+    if (currentContentOffsetY == lastContentOffsetY) &amp;#123;
+        return;
+    &amp;#125;
+
+    //是否是向上滑，初始值为NO
+    BOOL isToUp = NO;
+
+    //向上滑动
+    if (currentContentOffsetY &amp;gt; lastContentOffsetY) &amp;#123;
+        //处理滑动到底部，继续上滑后系统自动反弹而重复调用的情况
+        if (currentContentOffsetY+self.pp_h &amp;gt; self.pp_FSB_contentH) &amp;#123;
+            return;
+        &amp;#125;
+        isToUp = YES;
+        
+    &amp;#125;else&amp;#123;
+        //向下滑动
+        //处理已经最上面了仍然下拉而反弹时，反复调用
+        if (currentContentOffsetY &amp;lt;= self.pp_FSB_insetT) &amp;#123;
+            return;
+        &amp;#125;
+        
+    &amp;#125;
+    
+    //给pp_lastContentOffsetY绑定值
+    objc_setAssociatedObject(self, @selector(pp_lastContentOffsetY), [NSNumber numberWithFloat:currentContentOffsetY], OBJC_ASSOCIATION_RETAIN);
+    
+    //是否超过一个屏幕
+    BOOL isInOneScreen = (self.pp_FSB_insetT+self.pp_FSB_contentH &amp;lt;= self.pp_h);
+    
+    if (self.pp_scrollBlock) &amp;#123;
+        self.pp_scrollBlock(currentContentOffsetY, isToUp,isInOneScreen);
+    &amp;#125;
+
+&amp;#125;
+-(void)panGestureRecognizerStateAction:(NSDictionary&amp;lt;NSKeyValueChangeKey,id&amp;gt; *)change
+&amp;#123;
+    if (self.panGestureRecognizer.state == UIGestureRecognizerStateEnded) &amp;#123;
+        //内容不够一个屏幕时，系统会自动回弹，这时候记得把pp_lastContentOffsetY重新设置一下
+        if (self.pp_FSB_insetT+self.pp_FSB_contentH &amp;lt;= self.pp_h) &amp;#123;
+            [self setupInitializeOffsetY];
+        &amp;#125;else&amp;#123;
+            //超过一个屏幕,这时候下拉，当松开的时候要把pp_lastContentOffsetY重新设置一下
+            if (self.pp_FSB_offsetY &amp;lt; self.pp_FSB_insetT) &amp;#123;
+                [self setupInitializeOffsetY];
+            &amp;#125;
+        &amp;#125;
+    &amp;#125;
+    
+&amp;#125;
+
+#pragma mark --- 初始化contentOffsetY的值
+-(void)setupInitializeOffsetY&amp;#123;
+    CGFloat currentContentOffsetY = -self.pp_FSB_insetT;
+    objc_setAssociatedObject(self, @selector(pp_lastContentOffsetY), [NSNumber numberWithFloat:currentContentOffsetY], OBJC_ASSOCIATION_RETAIN);
+&amp;#125;
+
+-(void)setPp_scrollBlock:(PPUIScrollViewScrollBlock)pp_scrollBlock
+&amp;#123;
+    //在设置scrollBlock的时候，触发监听
+    self.pp_component.delegate = self;
+    objc_setAssociatedObject(self, @selector(pp_scrollBlock), pp_scrollBlock, OBJC_ASSOCIATION_RETAIN);
+&amp;#125;
+-(PPUIScrollViewScrollBlock)pp_scrollBlock
+&amp;#123;
+   return objc_getAssociatedObject(self, _cmd);
+&amp;#125;
+@end
+
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;&lt;strong&gt;针对上面的代码补充说明如下：&lt;/strong&gt;&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;注意 ** &lt;code&gt;component&lt;/code&gt; ** 的初识与关联，一定要弄懂为啥我代码中要用 &lt;code&gt;runtime&lt;/code&gt;  强制关联；&lt;/li&gt;
+&lt;li&gt;注意 ** &lt;code&gt;pp_lastContentOffsetY&lt;/code&gt; &lt;strong&gt; 的使用，它是给&lt;/strong&gt; UIScrollView** 动态绑定的记录上一次的 contentOffsetY 值的，只有在滑动的时候有效，&lt;strong&gt;最终如果你放外部的话，偏移量还是和 contentOffset.Y 的值一样&lt;/strong&gt;。&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;-(void)contentOffsetBlockAction:(NSDictionary&amp;lt;NSKeyValueChangeKey,id&amp;gt; *)change&lt;/code&gt;  这个方法处理滑动情况，但是&lt;strong&gt;开始下拉&lt;/strong&gt;和&lt;strong&gt;上拉到底&lt;/strong&gt;的两种临街状态时的 ** &lt;code&gt;pp_lastContentOffsetY&lt;/code&gt; ** 需要特殊处理，而这个处理就放在 &lt;code&gt;panGestureRecognizer.state == UIGestureRecognizerStateEnded&lt;/code&gt;  的时候。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;最后，感谢 **&lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cHM6Ly9naXRodWIuY29tL0NvZGVyTUpMZWUvTUpSZWZyZXNo&#34;&gt;MJRefresh&lt;/span&gt;**！&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;文字无法描述这个过程，当时怎么想，做的时候怎么做，后来又是怎么调整的，说多了，就失去了文章的核心，所以：感兴趣的最好看下代码，有不懂的请问我，尽我之力，一起学习。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;2018-03-08 14:20:40&lt;/strong&gt;  &lt;strong&gt;妇女节快乐！&lt;strong&gt;感谢公司的&lt;/strong&gt; party&lt;/strong&gt;, 此刻&lt;strong&gt;吃着零食喝着饮料&lt;/strong&gt;，匆匆结文。&lt;/p&gt;
+&lt;/blockquote&gt;
+</content>
+        <category term="iOS开发" scheme="http://abnerpei.github.io/categories/ios/" />
+        <updated>2020-04-12T12:46:25.000Z</updated>
+    </entry>
+    <entry>
+        <id>http://abnerpei.github.io/ios/ios-interview/interview/</id>
+        <title>iOS-interview</title>
+        <link rel="alternate" href="http://abnerpei.github.io/ios/ios-interview/interview/"/>
+        <content type="html">&lt;h2 id=&#34;1-搭建图床&#34;&gt;&lt;a class=&#34;anchor&#34; href=&#34;#1-搭建图床&#34;&gt;#&lt;/a&gt; 1、搭建图床&lt;/h2&gt;
+&lt;p&gt;1.1 登录你的&lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cHM6Ly9naXRlZS5jb20=&#34;&gt; Gitee&lt;/span&gt;，并新建仓库&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/001.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;1.2 填写仓库名、仓库路径、是否开源等信息&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;注意&lt;/strong&gt;：下图的 &lt;strong&gt; &lt;code&gt;4&lt;/code&gt; &lt;/strong&gt; 和 &lt;strong&gt; &lt;code&gt;5&lt;/code&gt; &lt;/strong&gt; 必须选中。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/002.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;1.3 创建私人令牌&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/003.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/004.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/005.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/006.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;1.4 复制私人令牌&lt;br /&gt;
+&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/007.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;1.5 配置 PicGo，并上传图片&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;注意点，在下图中有说明，请注意！&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/008.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img data-src=&#34;https://gitee.com/ppabner/pp_images/raw/master/Courses/courses_gitee_picgo/009.png&#34; alt=&#34;&#34; /&gt;&lt;/p&gt;
+</content>
+        <category term="iOS开发" scheme="http://abnerpei.github.io/categories/ios/" />
+        <category term="iOS面试" scheme="http://abnerpei.github.io/categories/ios/ios-ios-interview/" />
+        <updated>2020-04-12T12:46:25.000Z</updated>
+    </entry>
+    <entry>
+        <id>http://abnerpei.github.io/link-post-without-title/</id>
+        <title>www.google.com</title>
+        <link rel="alternate" href="http://abnerpei.github.io/link-post-without-title/"/>
+        <content type="html">&lt;p&gt;This is a link post without a title. The title should be the link with or without protocol. Clicking on the link should open &lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cDovL3d3dy5nb29nbGUuY29tLw==&#34;&gt;Google&lt;/span&gt; in a new tab or window.&lt;/p&gt;
+</content>
+        <updated>2013-12-24T15:44:13.000Z</updated>
+    </entry>
+    <entry>
+        <id>http://abnerpei.github.io/link-post/</id>
+        <title>Link Post</title>
+        <link rel="alternate" href="http://abnerpei.github.io/link-post/"/>
+        <content type="html">&lt;p&gt;This is a link post. Clicking on the link should open &lt;span class=&#34;exturl&#34; data-url=&#34;aHR0cDovL3d3dy5nb29nbGUuY29tLw==&#34;&gt;Google&lt;/span&gt; in a new tab or window.&lt;/p&gt;
+</content>
+        <updated>2013-12-24T15:30:04.000Z</updated>
+    </entry>
+</feed>
